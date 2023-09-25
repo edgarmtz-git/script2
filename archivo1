@@ -1,0 +1,908 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use DB;
+use Auth;
+use App\User;
+use DateTime;
+use App\fotos;
+use App\Constancia;
+use App\AreaTematica;
+use App\CategoriaCurso;
+use App\Exports\UsersExport;
+use Barryvdh\DomPDF\Facade as PDF;
+use App\Imports\ConstanciasImport;
+use App\Http\Requests\ConstanciaAddRequest;
+use App\Http\Requests\ConstanciasUpdateRequest;
+
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+
+class ConstanciaController extends Controller
+{
+   public function __construct()
+	{
+        $this->middleware('auth');
+	}
+
+	public function fecha($parametro)
+	{
+
+			$constancia =	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+									->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+									->where('fecha_exp', '=', $parametro)
+									->fecha($parametro)
+									->get();
+
+		return $constancia;
+	}
+
+	public function index(Request $request)
+	{
+        $orden_de_servicio = $request->get('orden_servicio');
+		$busNombre = $request->get('nombresBusqueda');
+		$busApellido = $request->get('apellidos');
+		$fechaLocal = date('Y-m-d');
+	  	$fecha = $request->get('fecha1');
+	  	$fecha2 = $request->get('fecha2');
+	  	$fecha3 = $request->get('fecha3');
+        $idRol = Auth::user()->idRol;
+        $id = Auth::user()->id;
+       
+        if ($orden_de_servicio) {
+        	if($idRol == 3)
+        	{
+        		$constancia 	=	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+									->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+									->where('orden_servicio', '=', $orden_de_servicio)
+									->where('CreadoPor', '=', Auth::user()->id)
+									// ->fecha($fecha3)
+									->get();
+					// dd($constancia->nombre_curso);
+        	}else{
+		  		$constancia 	=	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('orden_servicio', '=', $orden_de_servicio)
+										// ->fecha($fecha3)
+										->get();
+        	}
+					// dd($constancia->nombre_curso);
+			$prueba = count($constancia);
+			if ($prueba == 0) {
+				$vacio = 0;
+			}else{
+				$vacio = 1;
+			}
+			return view('Constancias.index',compact('constancia', 'vacio'));
+	  	}
+    
+		if ($busNombre) {
+			// dd($busNombre);
+	    	return redirect()->route('busquedaNombre', compact('busNombre','busApellido'));
+		}
+
+       if($fecha3) {
+       		if($idRol == 3)
+       		{
+				$constancia 	=	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+									->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+									->where('fecha_exp', '=', $fecha3)
+									->where('CreadoPor', '=', Auth::user()->id)
+									->where('constancias.id', '>', 2)
+									->fecha($fecha3)
+									->get();
+			}else{
+				$constancia 	=	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+									->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+									->where('fecha_exp', '=', $fecha3)
+									->where('constancias.id', '>', 2)
+									->fecha($fecha3)
+									->get();
+			}
+
+			$prueba = count($constancia);
+			if ($prueba == 0) {
+				$vacio = 0;
+			}else{
+				$vacio = 1;
+			}
+
+			return view('Constancias.index',compact('constancia', 'vacio'));
+		}
+		if($fecha3) {
+       	// $datos = new fecha($fecha3);
+       	 
+       	 	if($idRol == 3){
+				$constancia 	=	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('fecha_exp', '=', $fecha3)
+										->where('constancias.id', '>', 2)
+										->where('CreadoPor', '=', Auth::user()->id)
+										->fecha($fecha3)
+										->get();
+			}else{
+				$constancia 	=	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('fecha_exp', '=', $fecha3)
+										->where('constancias.id', '>', 2)
+										->fecha($fecha3)
+										->get();
+			}
+		}
+      if ($fecha && $fecha2) {
+      		if($idRol == 3)
+      		{
+				$constancia = Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+									->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+									->whereBetween('constancias.fecha_exp', [$fecha, $fecha2])
+									->where('constancias.id', '>', 2)
+									->where('CreadoPor', '=', Auth::user()->id)
+									->get();
+			}else{
+				$constancia = Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+									->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+									->whereBetween('constancias.fecha_exp', [$fecha, $fecha2])
+									->where('constancias.id', '>', 2)
+									->get();
+			}
+			// dd($constancia);
+	  		$prueba = count($constancia);
+			if ($prueba == 0) {
+				$vacio = 0;
+			}else{
+				$vacio = 1;
+			}
+			return view('Constancias.index',compact('constancia', 'vacio'));
+		} else {
+			if($idRol == 3)
+			{
+				$constancia 		=	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('fecha_exp', '=', $fechaLocal)
+										->where('constancias.id', '>', 2)
+										->where('CreadoPor', '=', Auth::user()->id)
+										->fecha($fecha)
+										->get();
+			}else{
+				$constancia 		=	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id', 'orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('fecha_exp', '=', $fechaLocal)
+										->where('constancias.id', '>', 2)
+										->fecha($fecha)
+										->get();
+			}
+			$prueba = count($constancia);
+			if ($prueba == 0) {
+				$vacio = 0;
+			}else{
+				$vacio = 1;
+			}
+		}
+		return view('Constancias.index',compact('constancia', 'vacio'));
+	}
+
+    public function busquedaNombre(Request $request)
+	{
+
+		$busnombre 	= $request->get('busNombre');
+		$busApellido	= $request->get('busApellido');
+		$idRol = Auth::user()->idRol;
+
+		if (null !== $request->get('fecha3')) {
+
+			$busnombre 	= $request->get('nombreResul');
+			$busApellido	= $request->get('apellidosResul');
+			// echo $busnombre;
+			// echo $busApellido;
+			// die();
+
+			if($idRol == 3)
+			{
+				$datosCursoPersonal = Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id','orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('nombre', 'like', $busnombre."%")
+										->where('apellidos', 'like', $busApellido."%")
+										->where('constancias.fecha_exp', '=' ,$request->get('fecha3'))
+										->where('CreadoPor', '=', Auth::user()->id)
+										->get();
+			}else{
+				$datosCursoPersonal = Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id','orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('nombre', 'like', $busnombre."%")
+										->where('apellidos', 'like', $busApellido."%")
+										->where('constancias.fecha_exp', '=' ,$request->get('fecha3'))
+										->get();
+			}
+
+
+			// dd($datosCursoPersonal);
+			$prueba = count($datosCursoPersonal);
+			if ($prueba == 0) {
+				$vacio = 0;
+			}else{
+				$vacio = 1;
+			}
+			return view('Constancias.viewDatosPersonales',compact('datosCursoPersonal', 'busnombre', 'busApellido', 'vacio'));
+
+		}
+
+		if (null !== $request->get('fecha1') &&  null !==  $request->get('fecha2')) {
+
+			$busnombre 	= $request->get('nombreResul');
+			$busApellido	= $request->get('apellidosResul');
+			
+			if($idRol == 3)
+			{
+				$datosCursoPersonal = Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id','orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('nombre', 'like', $busnombre."%")
+										->where('apellidos', 'like', $busApellido."%")
+										->where('CreadoPor', '=', Auth::user()->id)
+										->whereBetween('constancias.fecha_exp', [$request->get('fecha1'), $request->get('fecha2')])
+										->get();
+			}else{
+				$datosCursoPersonal = Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id','orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('nombre', 'like', $busnombre."%")
+										->where('apellidos', 'like', $busApellido."%")
+										->whereBetween('constancias.fecha_exp', [$request->get('fecha1'), $request->get('fecha2')])
+										->get();
+			}
+
+	  		$prueba = count($datosCursoPersonal);
+			if ($prueba == 0) {
+				$vacio = 0;
+			}else{
+				$vacio = 1;
+			}
+			return view('Constancias.viewDatosPersonales',compact('datosCursoPersonal', 'busnombre', 'busApellido','vacio'));
+		} else {
+
+			if($idRol == 3)
+			{
+				$datosCursoPersonal =	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id','orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('nombre', 'like', $busnombre."%")
+										->where('apellidos', 'like', $busApellido."%")
+										->where('CreadoPor', '=', Auth::user()->id)
+										->get();
+			}else{
+				$datosCursoPersonal =	Constancia::select('constancias.id','nombre','apellidos','fecha_exp','fecha_ven','folio','nombre_curso','curso_id','orden_servicio')
+										->join('categoria_cursos', 'categoria_cursos.id', '=', 'constancias.curso_id' )
+										->where('nombre', 'like', $busnombre."%")
+										->where('apellidos', 'like', $busApellido."%")
+										->get();
+			}
+
+			$cantidad = count($datosCursoPersonal);
+			if ($cantidad ==0) {
+				// 			dd($datosCursoPersonal);
+				toastr()->warning('¡Alumno no encontrado!');
+				return redirect()->route('constancias');
+			}
+				// echo "fuera";
+				// die();
+				$prueba = count($datosCursoPersonal);
+				if ($prueba == 0) {
+					$vacio = 0;
+				}else{
+					$vacio = 1;
+				}
+			return view('Constancias.viewDatosPersonales',compact('datosCursoPersonal', 'busnombre', 'busApellido', 'vacio'));
+		}
+
+	}
+
+	public function buscar(Request $request)
+	{
+		if ($request->ajax()) {
+			$cursos = CategoriaCurso::where('nombre_curso', 'like', $request->valor."%")->get();
+			foreach ($cursos as $curso) {
+				$cursosArray[$curso->id] = $curso->nombre_curso;
+			}
+			return $cursosArray;
+		}
+
+	}
+	public function buscarNombre(Request $request)
+	{
+		if ($request->all() != NULL) {
+			// echo "tiene algo";
+			$re = 1;
+			$cursos  =   CategoriaCurso::all();
+			return view('Constancias.bus',compact('cursos', 're'));
+		}else{
+			$re = 0;
+			// echo "no tiene nada";
+			return view('Constancias.bus',compact('cursos', 're'));
+		}
+		// dd($request->all());
+		$cursos  =   CategoriaCurso::all();
+		// dd($cursos);
+		// $cursos = 2;
+        return view('Constancias.bus',compact('cursos'));
+	}
+
+   public function acciones(Request $request)
+   {
+        return view('Constancias.acciones');
+   }
+
+	public function create()
+	{
+	    //$secuencia_ordenServicio = Constancia::select('orden_servicio')->latest('id')->first();
+	    
+	    $id = DB::table('constancias')->select('orden_servicio')->whereRaw('id = (SELECT MAX(id) as id FROM constancias WHERE CreadoPor != 5 )')->first();
+	    $secuencia_ordenServicio = $id->orden_servicio;
+		return view('Constancias.create', compact('secuencia_ordenServicio'));
+	}
+
+	public function export()
+	{
+		return Excel::download(new UsersExport, 'ExcellUsuarios.xlsx');
+	}
+
+	public function importExcel(Request $request)
+	{
+		$creadoPor =  Auth::user()->id;
+		$file = $request->file('file');
+		$cursoId	= CategoriaCurso::select('clave','id')->where('nombre_curso', '=', $request->curso)->first();
+		$fechaLocal 	= date('y');
+		$dosAnios = date("Y-m-d",strtotime($request->fecha_exp. "+ 2 year"));
+        if(Auth::user()->idRol == 3)
+	    {
+	    	$orden_servicio = 0;
+	    }else{
+	    	$orden_servicio = $request->orden_servicio;
+	    }
+
+
+		if (Excel::import(new ConstanciasImport, $file)) {
+			// Todos los registros actualmente insertados
+			$sinFolio 		= Constancia::where('curso_id', '=', 1)->get();
+			// Trae el ultimo folio
+			$contador = 1;
+			$signatario = 0;
+			// 			$ultimoFolio	= Constancia::where('curso_id', '!=', 1)->latest('id')->first();
+
+            if ($cursoId['clave'] == "GVA-CC-SPPTR") {
+				// $ultimoFolio	= Constancia::where('curso_id', '=', 10)->latest('id')->first();
+				$ultimoFolio	= Constancia::where('signatario', '=', 1)->latest('id')->first();
+				
+				$signatario = 1;
+			}else{
+				// $ultimoFolio	= Constancia::where('curso_id', '!=', 1)->where('curso_id', '!=', 10)->latest('id')->first();
+				$ultimoFolio	= Constancia::select('secuencia_folio')->where('signatario', '=', 0)->latest('id')->first();
+				// dd($ultimoFolio);
+			}
+
+			foreach ($sinFolio as $key ) {
+			    if ($cursoId['clave'] == "GVA-CC-SPPTR") {
+			        $dosAnios = date("Y-m-d",strtotime($request->fecha_exp. "+ 4 year"));
+					$folioFinal = $ultimoFolio->secuencia_folio + $contador;
+				// 	dd($folioFinal);
+					$folio =	$cursoId->clave . '-' . $fechaLocal . '-'. 3 . '-' . $folioFinal;
+					// dd($folio);
+				}else{
+					$folioFinal = $ultimoFolio->secuencia_folio + $contador;
+					$folio =	$cursoId->clave . '-' . $fechaLocal . '-'. 3 . '-' . $folioFinal;
+				}
+			    // $folioFinal = $ultimoFolio->secuencia_folio + $contador;
+				// $folio =	$cursoId->clave . '-' . $fechaLocal . '-'. 3 . '-' . $folioFinal;
+
+				$inSecuencia = Constancia::findorfail($key->id);
+				
+				if ($request->duracion_horas <= 8) {
+					$fechaInicio = $request->fecha_exp;
+				}else{
+					$divisionDehoras = $request->duracion_horas / 8;
+					$diasRedondeados = ceil($divisionDehoras);
+				    $diasARestar = $diasRedondeados - 1;
+				// 	$diasARestar = ceil($divisionDehoras)-1;
+					$fechaInicio = date('Y-m-d',strtotime("$request->fecha_exp - $diasARestar days"));
+				}
+				
+				// dd($inSecuencia);
+				$inSecuencia->secuencia_folio 	    = $ultimoFolio->secuencia_folio + $contador;
+				$inSecuencia->curso_id				= $cursoId->id;
+				$inSecuencia->fecha_inicio			= $fechaInicio;
+				$inSecuencia->fecha_exp				= $request->fecha_exp;
+				$inSecuencia->fecha_ven				= $dosAnios;
+				$inSecuencia->orden_servicio		= $orden_servicio;
+				$inSecuencia->duracion_horas		= $request->duracion_horas;
+				$inSecuencia->folio					= $folio;
+				$inSecuencia->signatario			= $signatario;
+				$inSecuencia->CreadoPor 			= $creadoPor;
+				/*dd($creadoPor);*/
+				$inSecuencia->save();
+
+				$contador++;
+			}
+
+			toastr()->success('¡Datos cargados con exito !');
+			return redirect()->route('constancias');
+		}
+	}
+
+	public function buscarFolio()
+	{
+		return view('Constancias.buscarFolio');
+	}
+
+	public function constanciaCPdf()
+	{
+		return view('Constancias.constancias');
+	}
+
+	public function constBasicasInd()
+	{
+		return view('Constancias.constanciasBasicaInd');
+	}
+
+	public function actualizar(Request $request)
+	{
+		$datosPer = Constancia::where('constancias.id', '=', $id = $request->get('id'))
+										->join('fotos', 'fotos.id_foto', '=', 'constancias.foto_id')
+										->first();
+
+		$catCurso2 = CategoriaCurso::where('id', '=', $datosPer->curso_id)->first();
+		$nuevaFechaExp = date("Y/m/d", strtotime($datosPer->fecha_exp));
+		$catCurso = CategoriaCurso::all();
+
+		return view('Constancias.edit', compact('datosPer', 'catCurso','nuevaFechaExp', 'catCurso2'));
+	}
+
+	public function getCategorias(Request $request)	{
+		if ($request->ajax()) {
+			$cursos = CategoriaCurso::select('id', 'nombre_curso')->where('areaTematica_id', '=', $request->area_id)->get();
+			foreach ($cursos as $curso) {
+
+				$cursosArray[$curso->id] = $curso->nombre_curso;
+			}
+			return response()->json($cursosArray);
+		}
+	}
+
+	public function destroy(Request $request)
+	{
+      $user = Constancia::findOrFail($request->id);
+
+        if ($user->delete()) {
+            toastr()->success('¡ Constacia eliminada con exito !');
+            return redirect()->route('constancias');
+        }else{
+            toastr()->success('¡ Error al eliminar usuario !');
+            return redirect()->route('constancias');
+        }
+   }
+
+	public function update(Request $request)
+	{
+	    
+		$update = Constancia::findOrFail($request->id);
+		
+		//$fechaVenci = date("Y-m-d",strtotime($request->fecha_exp."+ 2 year"));
+        if ($request->cursosCat == 10 || $request->cursosCat == 252) {
+			$fechaVenci = date("Y-m-d",strtotime($request->fecha_exp."+ 4 year"));
+		}else{
+			$fechaVenci = date("Y-m-d",strtotime($request->fecha_exp."+ 2 year"));
+		}
+		if ($request->firma) {
+			$firma = $request->firma;
+			$tipo = explode(".", $firma->getClientOriginalName());
+			// dd($tipo);
+			$path = public_path() . '/img/fotos';
+			$firma->move($path, $tipo[0]. '.' .$tipo[1]);
+
+			$foto = new fotos();
+			$foto->nombre_foto 				= $tipo[0];
+			$foto->folio_foto  				= $foto->folio + 1;
+			$foto->tipo_foto  				= $tipo[1];
+            $foto->ruta_foto  				= '../public/img/fotos/';
+			$foto->save();
+			$ultimoId	= fotos::latest('id_foto')->first();
+
+			// dd($ultimoId->id_foto);
+
+			if ($request->duracion_horas <= 8) {
+				$fechaInicio = $request->fecha_exp;
+			}else{
+				$divisionDehoras = $request->duracion_horas / 8;
+				$diasRedondeados = ceil($divisionDehoras);
+				$diasARestar = $diasRedondeados - 1;
+				$fechaInicio = date('Y-m-d',strtotime("$request->fecha_exp - $diasARestar days"));
+			}
+
+			$update->rfc 									=	$request->rfc;
+			$update->curp									=	$request->curp;
+			$update->nombre								    =	$request->nombre;
+			$update->apellidos							    =	$request->apellidos;
+			$update->telefono								=	$request->telefono;
+			$update->correo							    	=	$request->correo;
+			$update->ocupacion_especifica			    	=	$request->ocupacion_especifica;
+			$update->puesto							    	=	$request->puesto;
+			$update->fecha_inicio						    =	$fechaInicio;
+			$update->fecha_exp							    =	$request->fecha_exp;
+			$update->fecha_ven						    	=	$fechaVenci;
+			$update->razon_social					    	=	$request->nombre_razonSocial;
+			$update->rfc_empresa							=	$request->rfc_homoclave;
+			$update->representante_legal			    	=	$request->patron;
+			$update->representante_trabajadores		        =	$request->representante_trabajadores;
+			$update->duracion_horas					    	=	$request->duracion_horas;
+			// $update->folio								=	$request->folio;
+			$update->secuencia_folio					    =	$update->secuencia_folio;;
+			$update->curso_id								=	$request->cursosCat;
+			$update->foto_id								=	$ultimoId->id_foto;
+			$update->save();
+
+			if ($update->save()) {
+				toastr()->success('¡Datos Actualizados con exito !');
+			 	return redirect()->route('constancias');
+			}
+		}else{
+
+		}
+			if ($request->duracion_horas <= 8) {
+				$fechaInicio = $request->fecha_exp;
+			}else{
+				$divisionDehoras = $request->duracion_horas / 8;
+				$diasRedondeados = ceil($divisionDehoras);
+				$diasARestar = $diasRedondeados - 1;
+				$fechaInicio = date('Y-m-d',strtotime("$request->fecha_exp - $diasARestar days"));
+			}
+
+			$update->rfc 									=	$request->rfc;
+			$update->curp									=	$request->curp;
+			$update->nombre								    =	$request->nombre;
+			$update->apellidos							    =	$request->apellidos;
+			$update->telefono								=	$request->telefono;
+			$update->correo								    =	$request->correo;
+			$update->ocupacion_especifica			    	=	$request->ocupacion_especifica;
+			$update->puesto							    	=	$request->puesto;
+			$update->fecha_inicio					    	=	$fechaInicio;
+			$update->fecha_exp						    	=	$request->fecha_exp;
+			$update->fecha_ven						    	=	$fechaVenci;
+			$update->razon_social					    	=	$request->nombre_razonSocial;
+			$update->rfc_empresa							=	$request->rfc_homoclave;
+			$update->representante_legal			    	=	$request->patron;
+			$update->representante_trabajadores		        =	$request->representante_trabajadores;
+			$update->duracion_horas					    	=	$request->duracion_horas;
+			// $update->folio								=	$request->folio;
+			$update->secuencia_folio				    	=	$update->secuencia_folio;;
+			$update->curso_id								=	$request->cursosCat;
+			$update->foto_id								=	$request->id_foto;
+			$update->save();
+
+			if ($update->save()) {
+				toastr()->success('¡Datos Actualizados con exito !');
+			 	return redirect()->route('constancias');
+			}
+	}
+
+	public function addAlumno()
+	{
+	   // $secuencia_ordenServicio = Constancia::select('orden_servicio')->latest('id')->first();
+	    
+	    $id = DB::table('constancias')->select('orden_servicio')->whereRaw('id = (SELECT MAX(id) as id FROM constancias WHERE CreadoPor != 5 )')->first();
+	    $secuencia_ordenServicio = $id->orden_servicio;
+		return view('Constancias.addAlumno', compact('secuencia_ordenServicio'));
+	}
+
+	public function constanciasGeneral(Request $request)
+	{
+		// dd($request->all());
+		if ($request->formatoDc == 10) {
+			$datos = $request->all();
+			return redirect()->route('formatoGeneral', compact('datos'));
+		}
+		if ($request->credenciales == 11) {
+			$datos = $request->all();
+			$id_credenciales = $datos['todo'];
+			// dd($id_credenciales);
+			return redirect()->route('credencialesGeneral', compact('id_credenciales'));
+		}
+		// dd($request->all());
+		$limiteDelCiclo = count($request->todo);
+		foreach ($request->todo as $id) {
+			$sql = "	SELECT *
+						FROM constancias
+						INNER JOIN categoria_cursos on curso_id = categoria_cursos.id
+						INNER JOIN area_tematicas ON areaTematica_id = area_tematicas.id
+						INNER JOIN instructores   ON  instructores_id = instructores.id_instructores
+						WHERE constancias.id = ?";
+			$prueba = \DB::select($sql, array($id));
+			$todaInfo[] = $prueba;
+		}
+
+		$arrayInfo = $todaInfo;
+		if ($request->basDir == 2) {
+			$pdf = PDF::loadView('Constancias.constanciasGen', compact('arrayInfo'));
+			$pdf->setPaper("letter", "portrait");
+			return $pdf->download('ConstanciasTodas.pdf');
+
+		}elseif($request->basDir == 3){
+			$pdf = PDF::loadView('Constancias.constanciasBasicasGen', compact('arrayInfo', 'limiteDelCiclo'));
+			$pdf->setPaper("letter", "portrait");
+			return $pdf->download('ConstanciasTodas.pdf');
+
+		}
+
+		if ($request->basica == 1) {
+			// dd($request->basica );
+			$pdf = PDF::loadView('Constancias.constanciasBasicasGen', compact('arrayInfo', 'limiteDelCiclo'));
+		} else{
+			$pdf = PDF::loadView('Constancias.constanciasGen', compact('arrayInfo'));
+		}
+
+		$pdf->setPaper("letter", "portrait");
+		return $pdf->stream('ConstanciasTodas.pdf');
+	}
+
+	public function constanciaPdf(Request $request)
+	{
+			// dd($request->all());
+
+			$tipoConstancia= $request->get('tipo');
+			$id = $request->get('id');
+			$dato = Constancia::where('id', '=', $id)->first();
+
+			$nuevaFechaExp = date("d/m/Y", strtotime($dato->fecha_exp));
+			$nuevaFechaVen = date("d/m/Y", strtotime($dato->fecha_ven));
+
+			$catCurso = CategoriaCurso::join('instructores', 'instructores.id_instructores', '=', 'categoria_cursos.instructores_id' )
+												->where('id', '=', $dato->curso_id)->first();
+			
+			if ($catCurso->tituloCredencial ==  "SIGNATARIO DEL SPPTR") {
+				$registroStps = $catCurso->registroSTPS;
+				// dd($catCurso); 
+			}else{
+
+				$registroStps = "";	
+			}
+												
+												
+			$curso = explode("[",$catCurso->nombre_curso);
+			$tamano = strlen($curso[0]);
+
+			// dd($catCurso);
+			$areaTematica = AreaTematica::where('id', '=', $catCurso->areaTematica_id)->first();
+
+			if ($request->descBasicas == 2) {
+				$pdf = PDF::loadView('Constancias.constanciasBasicaInd', compact('dato', 'areaTematica', 'nuevaFechaExp', 'nuevaFechaVen', 'catCurso','curso', 'tamano', 'registroStps'));
+				$pdf->setPaper("letter", "portrait");
+				return $pdf->download('Constancias.pdf');
+
+			}elseif ($request->descBasicas == 3) {
+				$pdf = PDF::loadView('Constancias.constancias', compact('dato', 'areaTematica', 'nuevaFechaExp', 'nuevaFechaVen', 'catCurso','curso', 'tamano', 'registroStps'));
+				$pdf->setPaper("letter", "portrait");
+				return $pdf->download('Constancias.pdf');
+			}
+
+
+			if ($tipoConstancia == 1) {
+			// dd($tipoConstancia);
+				$pdf = PDF::loadView('Constancias.constanciasBasicaInd', compact('dato', 'areaTematica', 'nuevaFechaExp', 'nuevaFechaVen', 'catCurso','curso', 'tamano', 'registroStps'));
+			}else{
+				$pdf = PDF::loadView('Constancias.constancias', compact('dato', 'areaTematica', 'nuevaFechaExp', 'nuevaFechaVen', 'catCurso', 'curso', 'tamano', 'registroStps'));
+			}
+
+			$pdf->setPaper("letter", "portrait");
+			return $pdf->stream('Constancias.pdf');
+	}
+
+	public function addAlumnoStore(ConstanciaAddRequest $request)
+	{
+	   // dd($request->all());
+	if ($request->firma) {
+// 		$request->firma;
+
+		$firma = $request->firma;
+		$tipo = explode(".", $firma->getClientOriginalName());
+		$nombreFirma = uniqid() . $tipo[0];
+		$path = public_path() . '/img/fotos/';
+
+		$firma->move($path, $tipo[0]. '.' .$tipo[1]);
+
+		$foto = new fotos();
+		$foto->nombre_foto 	        	= $tipo[0];
+		$foto->folio_foto  				= $foto->folio + 1;
+		$foto->tipo_foto 				= $tipo[1];
+		$foto->ruta_foto  				= '../public/img/fotos/';
+		$foto->save();
+		$ultimoId	= fotos::latest('id_foto')->first();
+		$fotoId = $ultimoId->id_foto;
+	}else{
+		$fotoId = 1;
+	}
+
+
+      $fechaVenci = date("Y-m-d",strtotime($request->fecha_exp."+ 2 year"));
+      $fechaLocal 	= date('y');
+      $folio = 0;
+      $contador = 1;
+
+	  $claveFolio 	= CategoriaCurso::select('clave','id')->where('nombre_curso', '=', $request->curso)->first();
+       
+	    if ($request->duracion_horas <= 8) {
+			$fechaInicio = $request->fecha_exp;
+		}else{
+			$divisionDehoras = $request->duracion_horas / 8;
+// 			$diasARestar = ceil($divisionDehoras)-1;
+			$diasRedondeados = ceil($divisionDehoras);
+			$diasARestar = $diasRedondeados - 1;
+			$fechaInicio = date('Y-m-d',strtotime("$request->fecha_exp - $diasARestar days"));
+		}
+    
+    // 	$ultimoFolio 	= Constancia::select('secuencia_folio')->latest('id')->first();
+        // $ultimoFolio 	= Constancia::select('secuencia_folio')->latest('id')->WHERE('curso_id', '!=', 10)->first();
+        $ultimoFolio 	= Constancia::select('secuencia_folio')->latest('id')->WHERE('signatario', '=', 0)->first();
+        $folioFinal = $ultimoFolio->secuencia_folio + $contador;
+        $signatario = 0;
+        
+        if ($claveFolio['clave'] == "GVA-CC-SPPTR") {
+              
+// 			$ultimoFolio 	= Constancia::select('secuencia_folio')->latest('id')->WHERE('curso_id', '=',                     $claveFolio['id'])->get();
+            $fechaVenci = date("Y-m-d",strtotime($request->fecha_exp."+ 4 year"));
+			$ultimoFolio 	= Constancia::select('secuencia_folio')->latest('id')->WHERE('signatario', '=', 1)->get();
+			 $signatario = 1;
+			 //dd($ultimoFolio);
+			$folioFinal = $ultimoFolio[0]['secuencia_folio'] + $contador;
+			$folio =	$claveFolio->clave. '-' .$fechaLocal . '-'. 3 . '-' . $folioFinal;
+	    }else{
+	    	$folio =	$claveFolio->clave . '-' . $fechaLocal . '-'. 3 . '-' . $folioFinal;
+	    }
+	    
+	    if(Auth::user()->idRol == 3)
+	    {
+	    	$orden_servicio = 0;
+	    }else{
+	    	$orden_servicio = $request->orden_servicio;
+	    }
+		$foto = 1;
+		$addConstancia = new Constancia;
+
+		if ($request->validated()) {
+			$addConstancia->rfc 									= $request->rfc;
+			$addConstancia->curp 									= $request->curp;
+			$addConstancia->nombre 									= $request->nombre;
+			$addConstancia->apellidos 								= $request->apellidos;
+			$addConstancia->telefono 								= $request->telefono;
+			$addConstancia->correo 									= $request->correo;
+			$addConstancia->ocupacion_especifica 				    = $request->ocupacion_especifica;
+			$addConstancia->puesto 					 				= $request->puesto;
+			$addConstancia->fecha_inicio							= $fechaInicio;
+			$addConstancia->fecha_exp 								= $request->fecha_exp;
+			$addConstancia->fecha_ven								= $fechaVenci;
+			$addConstancia->razon_social							= $request->nombre_razonSocial;
+			$addConstancia->rfc_empresa						    	= $request->rfc_homoclave;
+			$addConstancia->representante_legal				    	= $request->patron;
+			$addConstancia->representante_trabajadores	        	= $request->representante_trabajadores;
+			$addConstancia->duracion_horas					    	= $request->duracion_horas;
+			$addConstancia->folio 									= $folio;
+			$addConstancia->secuencia_folio 						= $folioFinal;
+			$addConstancia->curso_id 								= $claveFolio->id;
+			$addConstancia->orden_servicio 							= $orden_servicio;
+			$addConstancia->foto_id 								= $fotoId;
+			$addConstancia->signatario 								= $signatario;
+			$addConstancia->CreadoPor 								= Auth::user()->id;
+
+			if ($addConstancia->save()) {
+				toastr()->success('¡ Usuario agregado con exito !');
+				return redirect()->route('constancias');
+			} else {
+				toastr()->success('¡ Hubo un error  !');
+			}
+		}
+	}
+
+	public function search()
+	{
+		//$todosCursos = CategoriaCurso::all();
+		// $cursosArray = array();
+
+        if(Auth::user()->idRol == 3)
+	    {
+	    	$todosCursos = CategoriaCurso::where('id', '!=', '10')->where('id', '!=', '252')->get();
+	    	/*dd($todosCursos);*/
+	    }else{
+	    	$todosCursos = CategoriaCurso::all();
+	    }
+
+		foreach ($todosCursos as $key) {
+
+			$cursoDataBase = $key['nombre_curso'];
+			// $id = $key['id'];
+			$cursos[] = array('nombre_curso' => $cursoDataBase);
+		}
+		$json_string = json_encode($cursos);
+         // dd($json_string);
+       return $json_string;
+       echo "<pre";
+       print_r();
+       echo "</pre";
+       die();
+	}
+
+	public function constanciasBasicasGen()
+	{
+		return view('Constancias.constanciasBasicasGen');
+	}
+
+	public function formato(Request $request)
+	{
+		$id = $request->get('id');
+		$dato = Constancia::where('id', '=', $id)->first();
+        
+		$catCurso = CategoriaCurso::join('instructores', 'instructores.id_instructores', '=', 'categoria_cursos.instructores_id' )
+												->where('id', '=', $dato->curso_id)->first();
+
+		$fechaSeparada1 = explode('-', $dato->fecha_inicio);
+		$fechaSeparada2 = explode('-', $dato->fecha_exp);
+		$curso = explode("[",$catCurso->nombre_curso);
+		$tamano = strlen($curso[0]);
+		
+		$pdf = PDF::loadView('Constancias.formatoDc', compact('dato', 'catCurso', 'fechaSeparada1', 'fechaSeparada2', 'curso','tamano'));
+			$pdf->setPaper("letter", "portrait");
+			return $pdf->stream('formatoDC3.pdf');
+	}
+	public function formatoGeneral(Request $request){
+		foreach ($request->datos['todo'] as $id) {
+			$sql = "	SELECT *
+						FROM constancias
+						INNER JOIN categoria_cursos on curso_id = categoria_cursos.id
+						INNER JOIN area_tematicas ON areaTematica_id = area_tematicas.id
+						INNER JOIN instructores   ON  instructores_id = instructores.id_instructores
+						WHERE constancias.id = ?";
+			$prueba = \DB::select($sql, array($id));
+
+			$todaInfo[] = $prueba;
+			$arrayInfo = $todaInfo;
+			// dd($todaInfo);
+		}
+
+		$pdf = PDF::loadView('Constancias.formatoDcGeneral', compact('arrayInfo'));
+			$pdf->setPaper("letter", "portrait");
+			return $pdf->stream('formatoDC3General.pdf');
+	}
+
+	public function credenciales(Request $request)
+	{
+		$dato = Constancia::join('fotos', 'fotos.id_foto', '=', 'constancias.foto_id')
+		->where('id', '=', $request->id)->first();
+
+		$catCurso = CategoriaCurso::join('instructores', 'instructores.id_instructores', '=', 'categoria_cursos.instructores_id' )
+												->where('id', '=', $dato->curso_id)->first();
+		$curso = explode("[",$catCurso->nombre_curso);
+		// dd($dato);
+
+
+		$pdf = PDF::loadView('Constancias.credenciales', compact('dato', 'catCurso', 'curso'));
+		$pdf->setPaper([0, 0, 240.945,  155.906]); 
+		return $pdf->stream('Credenciales.pdf');
+
+	}
+	public function credencialesGeneral(Request $request)
+	{
+		// dd($request->id_credenciales);
+		foreach ($request->id_credenciales as $id) {
+			$sql = "	SELECT *
+						FROM constancias
+						INNER JOIN categoria_cursos on curso_id = categoria_cursos.id
+						-- INNER JOIN area_tematicas ON areaTematica_id = area_tematicas.id
+						INNER JOIN instructores   ON  instructores_id = instructores.id_instructores
+						INNER JOIN fotos   ON  foto_id = fotos.id_foto
+						WHERE constancias.id = ?";
+			$prueba = \DB::select($sql, array($id));
+
+			$todaInfo[] = $prueba;
+			$arrayInfo = $todaInfo;
+			// dd($arrayInfo);
+		}
+			$pdf = PDF::loadView('Constancias.credencialesGeneral', compact('arrayInfo'));
+			$pdf->setPaper([0, 0, 240.945,  155.906]); 
+			return $pdf->stream('credencialesGeneral.pdf');
+	}
+
+}
+
